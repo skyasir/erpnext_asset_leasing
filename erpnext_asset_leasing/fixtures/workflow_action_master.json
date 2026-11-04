@@ -1,0 +1,58 @@
+[
+ {
+  "docstatus": 0,
+  "doctype": "Workflow Action Master",
+  "modified": "2026-09-17 03:14:48.728203",
+  "name": "Send for Inspection",
+  "workflow_action_name": "Send for Inspection"
+ },
+ {
+  "docstatus": 0,
+  "doctype": "Workflow Action Master",
+  "modified": "2026-09-17 03:14:48.729055",
+  "name": "Pass Inspection",
+  "workflow_action_name": "Pass Inspection"
+ },
+ {
+  "docstatus": 0,
+  "doctype": "Workflow Action Master",
+  "modified": "2026-09-17 03:14:48.729508",
+  "name": "Record Damage",
+  "workflow_action_name": "Record Damage"
+ },
+ {
+  "docstatus": 0,
+  "doctype": "Workflow Action Master",
+  "modified": "2026-09-17 03:14:48.730278",
+  "name": "Approve Charges",
+  "workflow_action_name": "Approve Charges"
+ },
+ {
+  "docstatus": 0,
+  "doctype": "Workflow Action Master",
+  "modified": "2026-09-15 04:59:58.881552",
+  "name": "Approve",
+  "workflow_action_name": "Approve"
+ },
+ {
+  "docstatus": 0,
+  "doctype": "Workflow Action Master",
+  "modified": "2026-09-15 04:59:58.882124",
+  "name": "Reject",
+  "workflow_action_name": "Reject"
+ },
+ {
+  "docstatus": 0,
+  "doctype": "Workflow Action Master",
+  "modified": "2026-09-15 23:35:28.378635",
+  "name": "Submit for Approval",
+  "workflow_action_name": "Submit for Approval"
+ },
+ {
+  "docstatus": 0,
+  "doctype": "Workflow Action Master",
+  "modified": "2026-09-15 23:35:28.380289",
+  "name": "Revise",
+  "workflow_action_name": "Revise"
+ }
+]

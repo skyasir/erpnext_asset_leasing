@@ -5,277 +5,100 @@ app_description = "Equipment and plant hire lifecycle for ERPNext"
 app_email = "erp.yasirshaikh@gmail.com"
 app_license = "mit"
 
-# Apps
-# ------------------
+# Fail fast on a bare Frappe site rather than half-installing.
+required_apps = ["erpnext"]
 
-# required_apps = []
+after_install = "erpnext_asset_leasing.setup.install.after_install"
 
-# Each item in the list will be shown as an app in the apps page
-# add_to_apps_screen = [
-# 	{
-# 		"name": "erpnext_asset_leasing",
-# 		"logo": "/assets/erpnext_asset_leasing/logo.png",
-# 		"title": "Asset Leasing",
-# 		"route": "/erpnext_asset_leasing",
-# 		"has_permission": "erpnext_asset_leasing.api.permission.has_app_permission",
-# 	}
-# ]
+# Re-applies the al_ custom fields idempotently, so a core upgrade that drops a
+# column self-heals on the next migrate.
+after_migrate = "erpnext_asset_leasing.setup.install.after_migrate"
 
-# The dock, the rail down the left of the desk, is a document rather than a hook. Author it in
-# Manage Dock on a developer-mode site and press Export to App, and it is written to
-# `erpnext_asset_leasing/dock/erpnext_asset_leasing/erpnext_asset_leasing.json` for git to carry. An app that ships none has no
-# rail: its sidebar gets a switcher in the header instead.
+# Custom Fields, Roles and Workflows ship as fixtures, so the whole
+# configuration moves with the app. Reports, print formats, notifications,
+# number cards, dashboard charts, the dashboard and the workspace are standard
+# records in the module folder, which bench migrate syncs on its own.
+# Nothing is ever created through the user interface.
 #
-# A companion app, one that extends a host app rather than standing on its own, says so with
-# `mount_on` on that same record, and its entries are appended to the host's rail. Mounting keeps
-# the companion off the apps screen, so it takes precedence over any add_to_apps_screen above.
+# Custom DocPerm is deliberately NOT a fixture. Frappe ignores standard DocPerm
+# for any DocType that has even one Custom DocPerm row, so importing only the
+# Leasing rows would strip Accounts Manager and Accounts User off Sales Invoice.
+# setup_permissions() owns those rows instead and runs from both after_install
+# and after_migrate; it calls frappe.permissions.add_permission, which copies
+# the standard rows in first.
+WORKFLOWS = ["Rental Agreement Approval", "Rental Return Inspection", "Rental Downtime Approval"]
+WORKFLOW_STATES = ["Draft", "Pending", "Approved", "Rejected", "Pending Inspection", "Damage Assessed", "Inspected"]
+WORKFLOW_ACTIONS = [
+	"Submit for Approval", "Approve", "Reject", "Revise",
+	"Send for Inspection", "Pass Inspection", "Record Damage", "Approve Charges",
+]
 
-# Includes in <head>
-# ------------------
+fixtures = [
+	{"dt": "Role", "filters": [["role_name", "like", "Leasing %"]]},
+	{"dt": "Custom Field", "filters": [["fieldname", "like", "al_%"]]},
+	{"dt": "Workflow", "filters": [["name", "in", WORKFLOWS]]},
+	{"dt": "Workflow State", "filters": [["name", "in", WORKFLOW_STATES]]},
+	{"dt": "Workflow Action Master", "filters": [["name", "in", WORKFLOW_ACTIONS]]},
+]
 
-# include js, css files in header of desk.html
-# app_include_css = "/assets/erpnext_asset_leasing/css/erpnext_asset_leasing.css"
-# app_include_js = "/assets/erpnext_asset_leasing/js/erpnext_asset_leasing.js"
+# Handlers on shared DocTypes return immediately when the document has nothing
+# to do with equipment hire, so they cost nothing elsewhere on the site.
+doc_events = {
+	"Asset": {"validate": "erpnext_asset_leasing.events.asset.validate"},
+	"Item": {"validate": "erpnext_asset_leasing.events.item.validate"},
+	"Customer": {"validate": "erpnext_asset_leasing.events.customer.validate"},
+	"Sales Invoice": {
+		"validate": "erpnext_asset_leasing.events.sales_invoice.validate",
+		"on_submit": "erpnext_asset_leasing.events.sales_invoice.on_submit",
+		"on_cancel": "erpnext_asset_leasing.events.sales_invoice.on_cancel",
+	},
+	"Asset Repair": {
+		"validate": "erpnext_asset_leasing.events.asset_repair.validate",
+		"on_update": "erpnext_asset_leasing.events.asset_repair.on_update",
+		"on_submit": "erpnext_asset_leasing.events.asset_repair.on_submit",
+		"after_delete": "erpnext_asset_leasing.events.asset_repair.after_delete",
+	},
+	"Asset Movement": {
+		"validate": "erpnext_asset_leasing.events.asset_movement.validate",
+		"before_cancel": "erpnext_asset_leasing.events.asset_movement.before_cancel",
+	},
+	"Payment Entry": {
+		"validate": "erpnext_asset_leasing.rental.deposits.validate",
+		"on_submit": "erpnext_asset_leasing.rental.deposits.on_submit",
+		"on_cancel": "erpnext_asset_leasing.rental.deposits.on_cancel",
+	},
+}
 
-# include js, css files in header of web template
-# web_include_css = "/assets/erpnext_asset_leasing/css/erpnext_asset_leasing.css"
-# web_include_js = "/assets/erpnext_asset_leasing/js/erpnext_asset_leasing.js"
+scheduler_events = {
+	"daily": [
+		"erpnext_asset_leasing.tasks.flag_overdue_returns",
+		"erpnext_asset_leasing.tasks.scan_compliance_expiry",
+		"erpnext_asset_leasing.tasks.refresh_utilisation_cache",
+		"erpnext_asset_leasing.tasks.reconcile_asset_status",
+	],
+}
 
-# include custom scss in every website theme (without file extension ".scss")
-# website_theme_scss = "erpnext_asset_leasing/public/scss/website"
+# Form behaviour only. Loaded per DocType rather than app-wide so these scripts
+# are not parsed on every page. No Client Script records are ever created.
+doctype_js = {
+	"Asset": "public/js/asset.js",
+	"Item": "public/js/item.js",
+	"Customer": "public/js/customer.js",
+	"Sales Invoice": "public/js/sales_invoice.js",
+	"Quotation": "public/js/quotation.js",
+	"Payment Entry": "public/js/payment_entry.js",
+	"Subscription": "public/js/subscription.js",
+}
 
-# include js, css files in header of web form
-# webform_include_js = {"doctype": "public/js/doctype.js"}
-# webform_include_css = {"doctype": "public/css/doctype.css"}
+# Hire documents reachable from the machine and from the invoice.
+override_doctype_dashboards = {
+	"Asset": "erpnext_asset_leasing.dashboards.asset",
+}
 
-# include js in page
-# page_js = {"page" : "public/js/file.js"}
-
-# include js in doctype views
-# doctype_js = {"doctype" : "public/js/doctype.js"}
-# doctype_list_js = {"doctype" : "public/js/doctype_list.js"}
-# doctype_kanban_js = {"doctype" : "public/js/doctype_kanban.js"}
-# doctype_tree_js = {"doctype" : "public/js/doctype_tree.js"}
-# doctype_calendar_js = {"doctype" : "public/js/doctype_calendar.js"}
-
-# Svg Icons
-# ------------------
-# include app icons in desk
-# app_include_icons = "erpnext_asset_leasing/public/icons.svg"
-
-# Home Pages
-# ----------
-
-# application home page (will override Website Settings)
-# home_page = "login"
-
-# website user home page (by Role)
-# role_home_page = {
-# 	"Role": "home_page"
-# }
-
-# Generators
-# ----------
-
-# automatically create page for each record of this doctype
-# website_generators = ["Web Page"]
-
-# automatically load and sync documents of this doctype from downstream apps
-# importable_doctypes = [doctype_1]
-
-# Jinja
-# ----------
-
-# add methods and filters to jinja environment
-# jinja = {
-# 	"methods": "erpnext_asset_leasing.utils.jinja_methods",
-# 	"filters": "erpnext_asset_leasing.utils.jinja_filters"
-# }
-
-# Installation
-# ------------
-
-# before_install = "erpnext_asset_leasing.install.before_install"
-# after_install = "erpnext_asset_leasing.install.after_install"
-
-# Uninstallation
-# ------------
-
-# before_uninstall = "erpnext_asset_leasing.uninstall.before_uninstall"
-# after_uninstall = "erpnext_asset_leasing.uninstall.after_uninstall"
-
-# Integration Setup
-# ------------------
-# To set up dependencies/integrations with other apps
-# Name of the app being installed is passed as an argument
-
-# before_app_install = "erpnext_asset_leasing.utils.before_app_install"
-# after_app_install = "erpnext_asset_leasing.utils.after_app_install"
-
-# Integration Cleanup
-# -------------------
-# To clean up dependencies/integrations with other apps
-# Name of the app being uninstalled is passed as an argument
-
-# before_app_uninstall = "erpnext_asset_leasing.utils.before_app_uninstall"
-# after_app_uninstall = "erpnext_asset_leasing.utils.after_app_uninstall"
-
-# Build
-# ------------------
-# To hook into the build process
-
-# after_build = "erpnext_asset_leasing.build.after_build"
-
-# To hook into the build process of other apps
-# The list of apps being built is passed as an argument
-
-# after_app_build = "erpnext_asset_leasing.build.after_app_build"
-
-# Desk Notifications
-# ------------------
-# See frappe.core.notifications.get_notification_config
-
-# notification_config = "erpnext_asset_leasing.notifications.get_notification_config"
-
-# Awesome Bar
-# -----------
-# Extra search results: list of dicts with label, description, route, index.
-# route: ["List", "ToDo"], "/desk/docs/some/page", or "https://example.com"
-# awesomebar_search = ["erpnext_asset_leasing.search.awesomebar_results"]
-
-# Permissions
-# -----------
-# Permissions evaluated in scripted ways
-
-# permission_query_conditions = {
-# 	"Event": "frappe.desk.doctype.event.event.get_permission_query_conditions",
-# }
-#
-# has_permission = {
-# 	"Event": "frappe.desk.doctype.event.event.has_permission",
-# }
-
-# Document Events
-# ---------------
-# Hook on document methods and events
-
-# doc_events = {
-# 	"*": {
-# 		"on_update": "method",
-# 		"on_cancel": "method",
-# 		"on_trash": "method"
-# 	}
-# }
-
-# Scheduled Tasks
-# ---------------
-
-# scheduler_events = {
-# 	"all": [
-# 		"erpnext_asset_leasing.tasks.all"
-# 	],
-# 	"daily": [
-# 		"erpnext_asset_leasing.tasks.daily"
-# 	],
-# 	"hourly": [
-# 		"erpnext_asset_leasing.tasks.hourly"
-# 	],
-# 	"weekly": [
-# 		"erpnext_asset_leasing.tasks.weekly"
-# 	],
-# 	"monthly": [
-# 		"erpnext_asset_leasing.tasks.monthly"
-# 	],
-# }
-
-# Testing
-# -------
-
-# before_tests = "erpnext_asset_leasing.install.before_tests"
-
-# Extend DocType Class
-# ------------------------------
-#
-# Specify custom mixins to extend the standard doctype controller.
-# extend_doctype_class = {
-# 	"Task": "erpnext_asset_leasing.custom.task.CustomTaskMixin"
-# }
-
-# Overriding Methods
-# ------------------------------
-#
-# override_whitelisted_methods = {
-# 	"frappe.desk.doctype.event.event.get_events": "erpnext_asset_leasing.event.get_events"
-# }
-#
-# each overriding function accepts a `data` argument;
-# generated from the base implementation of the doctype dashboard,
-# along with any modifications made in other Frappe apps
-# override_doctype_dashboards = {
-# 	"Task": "erpnext_asset_leasing.task.get_dashboard_data"
-# }
-
-# exempt linked doctypes from being automatically cancelled
-#
-# auto_cancel_exempted_doctypes = ["Auto Repeat"]
-
-# Ignore links to specified DocTypes when deleting documents
-# -----------------------------------------------------------
-
-# ignore_links_on_delete = ["Communication", "ToDo"]
-
-# Request Events
-# ----------------
-# before_request = ["erpnext_asset_leasing.utils.before_request"]
-# after_request = ["erpnext_asset_leasing.utils.after_request"]
-
-# Job Events
-# ----------
-# before_job = ["erpnext_asset_leasing.utils.before_job"]
-# after_job = ["erpnext_asset_leasing.utils.after_job"]
-
-# User Data Protection
-# --------------------
-
-# user_data_fields = [
-# 	{
-# 		"doctype": "{doctype_1}",
-# 		"filter_by": "{filter_by}",
-# 		"redact_fields": ["{field_1}", "{field_2}"],
-# 		"partial": 1,
-# 	},
-# 	{
-# 		"doctype": "{doctype_2}",
-# 		"filter_by": "{filter_by}",
-# 		"partial": 1,
-# 	},
-# 	{
-# 		"doctype": "{doctype_3}",
-# 		"strict": False,
-# 	},
-# 	{
-# 		"doctype": "{doctype_4}"
-# 	}
-# ]
-
-# Authentication and authorization
-# --------------------------------
-
-# auth_hooks = [
-# 	"erpnext_asset_leasing.auth.validate"
-# ]
-
-# on_social_login = "erpnext_asset_leasing.auth.on_social_login"
-
-# Automatically update python controller files with type annotations for this app.
-# export_python_type_annotations = True
-
-# default_log_clearing_doctypes = {
-# 	"Logging DocType Name": 30  # days to retain logs
-# }
-
-# Translation
-# ------------
-# List of apps whose translatable strings should be excluded from this app's translations.
-# ignore_translatable_strings_from = []
-
+jinja = {
+	"methods": [
+		"erpnext_asset_leasing.utils.jinja.al_duration",
+		"erpnext_asset_leasing.utils.jinja.al_condition_changed",
+		"erpnext_asset_leasing.utils.jinja.al_pricing_basis",
+	],
+}
