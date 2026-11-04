@@ -53,7 +53,7 @@ bills the full monthly rate for each period.
 ## Install
 
 ```bash
-bench get-app <repo-url> erpnext_asset_leasing
+bench get-app https://github.com/skyasir/erpnext_asset_leasing --branch version-16
 bench --site <site> install-app erpnext_asset_leasing
 bench --site <site> migrate
 ```
