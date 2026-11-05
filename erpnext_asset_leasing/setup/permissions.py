@@ -21,6 +21,14 @@ TECH = "Leasing Maintenance Technician"
 FINANCE = "Leasing Finance"
 MANAGER = "Leasing Manager"
 MANAGEMENT = "Leasing Management"
+LEASING_ROLES = {HIRE_DESK, YARD, TECH, FINANCE, MANAGER, MANAGEMENT}
+
+
+def check_app_permission():
+	"""Show the Asset Leasing tile on the apps screen only to people who use it."""
+	if frappe.session.user == "Administrator":
+		return True
+	return bool(set(frappe.get_roles()) & (LEASING_ROLES | {"System Manager"}))
 
 R = {"read": 1}
 RW = {"read": 1, "write": 1}

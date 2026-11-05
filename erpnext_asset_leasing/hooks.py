@@ -4,6 +4,17 @@ app_publisher = "Yasir Shaikh"
 app_description = "Equipment and plant hire lifecycle for ERPNext"
 app_email = "erp.yasirshaikh@gmail.com"
 app_license = "mit"
+app_home = "/desk/asset-leasing"
+
+add_to_apps_screen = [
+	{
+		"name": app_name,
+		"logo": "/assets/erpnext_asset_leasing/images/asset_leasing.svg",
+		"title": app_title,
+		"route": app_home,
+		"has_permission": "erpnext_asset_leasing.setup.permissions.check_app_permission",
+	}
+]
 
 # Fail fast on a bare Frappe site rather than half-installing.
 required_apps = ["erpnext"]
